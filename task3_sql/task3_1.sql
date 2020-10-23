@@ -2,10 +2,9 @@
 -- 1
 ---------- 
 /*
-изначальна€ иде€ была следующа€: отсортировать по успеваемости, разделить последовательность на три множества(A-самые сильные,B-средние,C-слабые),
-перебрать все возможные варианты выбора из каждого множества одного студента в одну из трех групп. “ем самым свести перебор с —39*—63*—33 = 1680 вариантов
-до (—13*—12)^3 = 216 вариантов. ѕеребор пока что не получилось реализовать, реализовал выбор одного из таких 216 вариантов.
-
+??????????? ???? ???? ?????????: ????????????? ?? ????????????, ????????? ?????????????????? ?? ??? ?????????(A-????? ???????,B-???????,C-??????),
+????????? ??? ????????? ???????? ?????? ?? ??????? ????????? ?????? ???????? ? ???? ?? ???? ?????. ??? ????? ?????? ??????? ? ?39*?63*?33 = 1680 ?????????
+?? (?13*?12)^3 = 216 ?????????. ??????? ???? ??? ?? ?????????? ???????????, ?????????? ????? ?????? ?? ????? 216 ?????????.
 primary idea was: sort by score, divide the sequence into three sets(A-the strongest,B-the average, C-the weakest), iterate through all possible options
 to peak one student from each set and put it to one of three groups. Thus, reduce the search from C39*C63*C33 = 1680 options
 to (C13*C12)^3 = 216 options. The search has not yet been implemented, so I have implemented the choice of one of these 216 options.
@@ -125,6 +124,46 @@ rename racers_temp to racers;
 
 select * from racers;
 
+--new one you ask about
+select name, racer2, racer3, racer4, racer5
+from(
+     select id, name,
+            lead(timetofirst, 4, 0) over(order by id)  -  timetofirst as gap,
+            lead(name, 1, 0) over(order by id) as racer2,
+            lead(name, 2, 0) over(order by id) as racer3,
+            lead(name, 3, 0) over(order by id) as racer4,
+            lead(name, 4, 0) over(order by id) as racer5
+     from racers) as rs
+where id + 4 <= (select count(*) from racers)
+order by gap
+fetch first 1 rows only;
+
+/* dont know, why it doesnt work
+select id,
+       name,
+       team,
+       timetofirst
+from  racers
+where charindex((cast(id as varchar)||'|'),  
+           (select cast(id as varchar)||'|'||
+                   cast(racer2 as varchar) ||'|'||
+                   cast(racer3 as varchar) ||'|'||
+                   cast(racer4 as varchar) ||'|'||
+                   cast(racer5 as varchar)||'|'||
+            from(
+                  select id, 
+                        lead(timetofirst, 4, 0) over(order by id)  -  timetofirst as gap,
+                        lead(id, 1, 0) over(order by id) as racer2,
+                        lead(id, 2, 0) over(order by id) as racer3,
+                        lead(id, 3, 0) over(order by id) as racer4,
+                        lead(id, 4, 0) over(order by id) as racer5
+                  from racers) as rs
+             where id + 4 <= (select count(*) from racers)
+             order by gap
+             fetch first 1 rows only)) > 0
+*/
+             
+--old huge variant
 select id,
        name,
        team,
@@ -148,15 +187,14 @@ where id between
              where id + 4 <= (select count(*) from racers)
              order by sum_gap
              fetch first 1 rows only) + 4
+             
 
 /*
--- это решение дл€ аналогичной задачи, только при условии что задано timetoprevious(ниже оно высчитываетс€ из timetofirst)
+-- ??? ??????? ??? ??????????? ??????, ?????? ??? ??????? ??? ?????? timetoprevious(???? ??? ????????????? ?? timetofirst)
 -- this is a solution for a similar problem, but if timetoprevious is set instead of timetofirst(it is calculated from timetofirst below)
-
 alter table racers
         add column gap int null;
-
--- можно ли написать такой merge через update?
+-- ????? ?? ???????? ????? merge ????? update?
 -- can we write the same merge through update?        
 MERGE INTO racers r
    USING (select name,
@@ -165,9 +203,7 @@ MERGE INTO racers r
           from racers) AS rs
    ON (r.name = rs.name)
    WHEN MATCHED THEN UPDATE SET r.gap = rs.gap;       
-
 select * from racers;
-
 select id,
        name,
        team,
@@ -201,7 +237,7 @@ where id between
 */ 
 
 /*
--- извлечение групп students
+-- ?????????? ????? students
 select id,
          lag(id)
          over(order by score desc) as id2, 
@@ -213,15 +249,13 @@ from (
         order by score desc
         FETCH FIRST 3 ROWS ONLY)
 limit 1, 1;
-
 select id, groupid
 from students
 order by score desc
 Limit 3, 3;
-
 select id, groupid
 from students
 order by score desc
 Limit 6, 3;
 */
-;                          
+;
