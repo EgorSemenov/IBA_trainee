@@ -5,6 +5,10 @@
 изначальная идея была следующая: отсортировать по успеваемости, разделить последовательность на три множества(A-самые сильные,B-средние,C-слабые),
 перебрать все возможные варианты выбора из каждого множества одного студента в одну из трех групп. Тем самым свести перебор с С39*С63*С33 = 1680 вариантов
 до (С13*С12)^3 = 216 вариантов. Перебор пока что не получилось реализовать, реализовал выбор одного из таких 216 вариантов.
+
+primary idea was: sort by score, divide the sequence into three sets(A-the strongest,B-the average, C-the weakest), iterate through all possible options
+to peak one student from each set and put it to one of three groups. Thus, reduce the search from C 39*C 63*C 33 = 1680 options
+to (C13*C12)^3 = 216 options. The search has not yet been implemented, so I have implemented the choice of one of these 216 options.
 */
 drop table students;
 create table students (id int, score int, groupid int);
@@ -147,10 +151,14 @@ where id between
 
 /*
 -- это решение для аналогичной задачи, только при условии что задано timetoprevious(ниже оно высчитывается из timetofirst)
+-- this is a solution for a similar problem, but if timetoprevious is set instead of timetofirst(it is calculated from timetofirst below)
+
 alter table racers
         add column gap int null;
 
--- можно ли написать такой merge через update?        
+-- можно ли написать такой merge через update?
+-- can we write the same merge through update?
+        
 MERGE INTO racers r
    USING (select name,
                  (racers.timetofirst - lag(racers.timetofirst, 1, 0)
