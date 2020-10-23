@@ -7,7 +7,7 @@
 до (С13*С12)^3 = 216 вариантов. Перебор пока что не получилось реализовать, реализовал выбор одного из таких 216 вариантов.
 
 primary idea was: sort by score, divide the sequence into three sets(A-the strongest,B-the average, C-the weakest), iterate through all possible options
-to peak one student from each set and put it to one of three groups. Thus, reduce the search from C 39*C 63*C 33 = 1680 options
+to peak one student from each set and put it to one of three groups. Thus, reduce the search from C39*C63*C33 = 1680 options
 to (C13*C12)^3 = 216 options. The search has not yet been implemented, so I have implemented the choice of one of these 216 options.
 */
 drop table students;
@@ -157,8 +157,7 @@ alter table racers
         add column gap int null;
 
 -- можно ли написать такой merge через update?
--- can we write the same merge through update?
-        
+-- can we write the same merge through update?        
 MERGE INTO racers r
    USING (select name,
                  (racers.timetofirst - lag(racers.timetofirst, 1, 0)
