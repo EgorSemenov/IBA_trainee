@@ -1,0 +1,171 @@
+## 1.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: my-app
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+        - image: nginx:1.17
+          name: nginx
+          ports:
+          - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-service
+spec:
+  ports:
+  - port: 80
+    targetPort: 80
+  selector:
+    app: app
+  type: ClusterIP
+[egS@localhost task5_k8s]$ kubectl apply -f deployment.yaml
+[egS@localhost task5_k8s]$ kubectl apply -f service.yaml
+## 2.
+---
+[egS@localhost ~]$ kubectl create configmap nginx-conf --from-file=default.conf
+## 3.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: my-app
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+        - image: nginx:1.17
+          name: nginx
+          ports:
+          - containerPort: 80
+          volumeMounts:
+            - mountPath: /etc/nginx/conf.d
+              name: nginx-config-volume  
+      volumes:
+        - name: nginx-config-volume
+          configMap:
+            name: nginx-conf
+[egS@localhost task5_k8s]$ kubectl apply -f deployment.yaml
+## 4.
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: auth-secret
+type: kubernetes.io/basic-auth
+stringData:
+  username: admin
+  password: asfa
+## 5.
+[egS@localhost task5_k8s]$ kubectl create configmap pass-conf --from-file=default-secret.conf
+## 6-7.
+cp mv
+## 8.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: secretapp
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: my-secret-app
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: my-secret-app
+    spec:
+      containers:
+        - image: nginx:1.17
+          name: nginx
+          ports:
+          - containerPort: 80
+          volumeMounts:
+            - mountPath: /opt/default-secret.yaml
+              name: secret-conf-volume  
+      volumes:
+        - name: secret-conf-volume
+          configMap:
+            name: pass-conf
+## 9.
+---
+[egS@localhost task5_k8s]$ sudo kubectl apply -f appsecret.yaml
+[egS@localhost ~]$ sudo kubectl get deployments
+NAME        READY   UP-TO-DATE   AVAILABLE   AGE
+secretapp   2/2     2            2           24m
+
+## 10.
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: secret-service
+subsets:
+  - addresses:
+      - ip: 172.17.0.4
+      - ip: 172.17.0.3
+    ports:
+      - port: 80
+[egS@localhost ~]$ sudo kubectl get ep
+NAME             ENDPOINTS                     AGE
+kubernetes       192.168.0.105:8443            67m
+secret-service   172.17.0.3:80,172.17.0.4:80   64m
+[egS@localhost ~]$ sudo kubectl get pod -o wide
+NAME                         READY   STATUS    RESTARTS   AGE   IP           NODE                    NOMINATED NODE   READINESS GATES
+secretapp-7bf5596cc9-qzjkq   1/1     Running   0          23m   172.17.0.4   localhost.localdomain   <none>           <none>
+secretapp-7bf5596cc9-wgzzf   1/1     Running   0          23m   172.17.0.3   localhost.localdomain   <none>           <none>
+
+[egS@localhost ~]$ sudo kubectl describe pods:
+
+Events:
+  Type    Reason     Age   From               Message
+  ----    ------     ----  ----               -------
+  Normal  Scheduled  26s   default-scheduler  Successfully assigned default/secretapp-59cd6f45b7-lffmq to localhost.localdomain
+  Normal  Pulled     22s   kubelet            Container image "nginx:1.17" already present on machine
+  Normal  Created    19s   kubelet            Created container nginx
+  Normal  Started    18s   kubelet            Started container nginx
+
+http://172.17.0.3:80,
+http://172.17.0.4:80:
+Welcome to nginx!
+If you see this page, the nginx web server is successfully installed and working. Further configuration is required.
+
+For online documentation and support please refer to nginx.org.
+Commercial support is availabl	e at nginx.com.
+
+Thank you for using nginx.
