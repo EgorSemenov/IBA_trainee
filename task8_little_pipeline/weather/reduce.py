@@ -19,7 +19,7 @@ for line in sys.stdin:
     try:
         key, val = line.strip().split(',')
         last_key, max_val = print_key(last_key, key, max_val, val)
-    except ValueError:                                         # this exception for situations like Omaha 12.2Piano 49.1
+    except ValueError:                                         # this exception for situations like Omaha,12.2Piano,49.1
         two_rows = line.strip().split(",")
         key1 = two_rows[0]
         start_k_2 = re.search(r'[A-z ]+', two_rows[1]).start()
