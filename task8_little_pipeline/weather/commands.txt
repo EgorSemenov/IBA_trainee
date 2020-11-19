@@ -1,0 +1,2 @@
+cat file_*.csv| sort -u| ./reduce.py
+
