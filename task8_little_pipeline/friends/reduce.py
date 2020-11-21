@@ -2,9 +2,9 @@
 
 
 import sys
-import time
+# import time
 
-start_time = time.time()
+# start_time = time.time()
 
 friends = {}
 
@@ -35,5 +35,5 @@ for ind_f_f in ind_friend:
         #                                                                      intersection(friends[ind_friend[ind_s_f]]))
 print(mutual_f)
 
-print(" %s seconds of work 6 cores + 16gb" % (time.time() - start_time))
+# print(" %s seconds of work 6 cores + 16gb" % (time.time() - start_time))
 
