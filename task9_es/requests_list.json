@@ -1,0 +1,295 @@
+--1
+DELETE /elasticsearch_cluster
+в данном случае динамический маппинг не совсем нужен, но в качестве примера и демонстрации(dynamic mapping only for demo)
+PUT elasticsearch_cluster
+{
+  "mappings": {
+    "dynamic_templates": [
+      {
+        "instance_type": {
+          "match_mapping_type": "string",
+          "match":   "instance*", 
+          "mapping": {
+            "type": "text",
+            "fields": {
+            "keyword": {
+                "type": "keyword"
+              }
+            }
+          }
+        }
+      },
+      {
+        "region": {
+          "match_mapping_type": "string",
+          "match":   "region*",
+          "mapping": {
+            "type": "text",
+            "fields": {
+            "keyword": {
+                "type": "keyword"
+              }
+            }
+          }
+        }
+      },
+      {
+        "nodetype_product": {
+          "match_mapping_type": "string",
+          "match":   "*",
+          "mapping": {
+            "type": "keyword"
+          }
+        }
+      },
+      {
+        "ifmaster": {
+          "match_mapping_type": "long",
+          "match":   "master",
+          "mapping": {
+            "type": "byte",
+            "index": "false"
+          }
+        }
+      }
+    ]
+  }
+}
+PUT /elasticsearch_cluster/_doc/1
+{
+  "instance_type": "aws.data.highio.i3",
+  "region": "eu-central-1a",
+  "product": "es",
+  "node_type": "data",
+  "master": 0
+}
+
+PUT /elasticsearch_cluster/_doc/2
+{
+  "instance_type": "AWS.APM.R5D",
+  "region": "eu-central-1a",
+  "product": "aws"
+}
+
+PUT /elasticsearch_cluster/_doc/3
+{
+  "instance_type": "AWS.DATA.HIGHIO.I3",
+  "region": "eu-central-1b",
+  "product": "es",
+  "node_type": "data",
+  "master": 1
+}
+
+PUT /elasticsearch_cluster/_doc/4
+{
+  "instance_type": "AWS.MASTER.R5D",
+  "region": "eu-central-1c",
+  "product": "es",
+  "node_type": "master",
+  "master": 0
+}
+
+PUT /elasticsearch_cluster/_doc/5
+{
+  "instance_type": "AWS.KIBANA.R5D",
+  "region": "eu-central-1c",
+  "product": "kibana"
+}
+-- 2
+маппил не все поля, только для задания и еще несколько(mapping only for task fields and several more)
+PUT logs_data
+{   "settings": {
+    "index": {
+      "number_of_shards": 3,  
+      "number_of_replicas": 3 
+    },
+    "analysis": {
+    "tokenizer": "standart"
+    }
+  },
+   "mappings" : 
+     {
+      "dynamic_templates":[ 
+      {
+        "strings_to_key": {
+          "match_mapping_type": "string",
+          "mapping": {
+            "type": "keyword"
+          }
+        }
+      }]
+      ,
+      "properties" : {
+        "agent" : {
+          "type" : "text",
+          "fields" : {
+            "keyword" : {
+              "type" : "keyword",
+              "ignore_above" : 256
+            }
+          }
+        },
+        "bytes" : {
+          "type" : "long"
+        },
+        "clientip" : {
+          "type" : "ip"
+        },
+        "host" : {
+          "type" : "text",
+          "fields" : {
+            "keyword" : {
+              "type" : "keyword",
+              "ignore_above" : 256
+            }
+          }
+        },
+        "ip" : {
+          "type" : "ip"
+        },
+        "memory" : {
+          "type" : "double"
+        },
+        "message" : {
+          "type" : "object",
+          "enabled": false
+        },
+        "referer" : {
+          "type" : "keyword",
+          "doc_values": false
+        },
+        "request" : {
+          "type" : "text",
+          "fields" : {
+            "keyword" : {
+              "type" : "keyword",
+              "ignore_above" : 256
+            }
+          }
+        },
+        "timestamp" : {
+          "type" : "date"
+        },
+        "utc_time" : {
+          "type" : "date"
+        }
+      }
+    }
+  }  
+
+POST _reindex
+{
+  "source": {
+    "index": "kibana_sample_data_logs"
+  },
+  "dest": {
+    "index": "logs_data"
+  }
+}
+
+GET logs_data/_mapping
+
+--3
+Запрос, который отображает логи за позавчера, с такими-то "составными частями" агента(Mozilla/5.0 Chrome/11.0.696.50),
+c количеством байтов >10000, и запрос(поле) не должен быть указанным(/beats/filebeat), наиболее интересны логи о запросах
+с памятью >300, логи запросов пришедших с машины пользователя на которой стоит win7,
+и логи, пришедшие в рабочее время.
+POST _search
+{
+  "query": {
+    "bool" : {
+      "must" : [
+        {
+          "match" : { "agent" : "Mozilla/5.0 Chrome/11.0.696.50" }
+        },
+        {
+          "range" : 
+            { "bytes" : {"gte":10000} }
+        }
+      ],
+       "filter": {
+        "range" : 
+          { "utc_time" : { 
+            "gte": "now-2d",
+            "lte":"now-1d"
+          }
+        }
+      },
+      "must_not" : {
+        "term" : {
+          "request" : "/beats/filebeat"
+        }
+      },
+      "should" : [
+        {
+          "range" : 
+            {"memory": {"lte":300.0}}
+        },
+        {
+          "term": {
+            "machine.os": "win 7"
+          }
+        },
+        { 
+          "script" : { 
+            "script": {
+              "inline": "def hour = doc['utc_time'].value.getHour(); return hour >= params.min && hour < params.max;",
+              "lang": "painless",
+              "params": {
+                  "min": 9,
+                  "max": 17
+              }
+            }
+          }
+        }       
+      ],
+      "minimum_should_match" : 1
+    }
+  }
+}
+
+
+--4
+узнать распредление(норму и самые большие) количества байт для самых популярных запросов, для каждого дня
+из последних семи дней, не считая сегодняшний
+POST /logs_data/_search
+{
+  "size": 0,
+ "query": {
+    "bool" : {
+        "filter": {
+          "range" : 
+            { "utc_time" : { 
+              "gte": "now-7d",
+              "lte":"now-1d"
+            }
+        }
+      }
+    }
+  },
+  "aggs": {
+  "precentiles_for_popular_requests_per_day": {
+      "date_histogram": {
+        "field": "timestamp",
+        "calendar_interval": "day"
+      },
+    "aggs": {
+      "popular_requests":{
+          "terms": {
+              "field": "request.keyword",
+              "size": 3
+            },
+          "aggs": {
+            "precentiles_bytes":{
+              "percentiles":{
+                  "field": "bytes",
+                  "percents": [50,99]
+                }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
