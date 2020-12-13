@@ -104,7 +104,7 @@ PUT logs_data
       "number_of_replicas": 3 
     },
     "analysis": {
-    "tokenizer": "standart"
+    "tokenizer": "standard"
     }
   },
    "mappings" : 
