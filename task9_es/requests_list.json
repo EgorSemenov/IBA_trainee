@@ -210,8 +210,8 @@ POST _search
        "filter": {
         "range" : 
           { "utc_time" : { 
-            "gte": "now-2d",
-            "lte":"now-1d"
+            "gte": "now-2d/d",
+            "lte":"now-1d/d"
           }
         }
       },
